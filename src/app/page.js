@@ -1,95 +1,101 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client"
 
-export default function Home() {
-  return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.js</code>
-        </p>
+
+import './globals.css';
+import React from "react";
+import io from "socket.io-client";
+
+
+function Page() {
+    let [name , setName] = React.useState(null);
+    let [socket , setSocket] = React.useState();
+    const [content , setContent] = React.useState("");
+    React.useEffect(() => {
+        console.log("mounting.");
+        initializing();
+    } , [])
+
+
+    async function initializing() {
+        name = prompt('Enter you name to join the chat');
+        await fetch('/api/socket')
+        .then(r => {
+            socket = io(undefined , {
+                path:"/api/socket_io",
+                addTrailingSlash: false,
+            });
+            
+
+            socket?.on('connect' , () => { 
+                console.log("connected.." , socket.id);
+                socket.emit('new-user' , name);
+            });
+            
+            socket?.on('newUser' , Name => {                
+                const box = document.querySelector('.chat-box');
+                let message = chatModel(Name , "joined the chat" , 'center');
+                box.appendChild(message);
+            });
+
+            socket?.on('welcome' , data => {
+                console.log("welcome message" , socket.id);
+            })
+            
+            socket?.on('receiveMessage' , data => {    
+                  const box = document.querySelector('.chat-box');
+                  let message = chatModel(data.Name , data.message , 'left');
+                  box.appendChild(message);
+        
+                console.log("client received the message " , socket.id);
+            });
+        
+            socket?.on('disconnect' , () => {
+                console.log("Disconnected");
+            });
+        
+            setName(name);
+            setSocket(socket);
+            return () => {
+                socket.disconnect();
+              };
+        })
+    }
+
+    
+    const handleClick = e => {
+          const box = document.querySelector('.chat-box');
+          let message = chatModel("you" , content , 'right');
+          box.appendChild(message);
+
+        console.log("Clicking" , socket.id);
+        socket?.emit('sendMessage' , {Name: name, message:content});
+        setContent("");
+    };
+    
+    return (
         <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+            hello
+            <div className='chat-box'>
+                <h1>Chat Group..</h1>
+                <p className='left'>Welcome in this chat group</p>
+            </div>
+
+            <div className='center'>
+                <input type='text' value = {content} onChange={e => setContent(e.target.value)}  required/>
+                <button onClick={handleClick}>click</button>
+            </div>
+
         </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  );
+    )
 }
+
+const chatModel = (name , message , dir) => {
+  const node = document.createElement('p');
+  node.innerText = name + ": " + message;
+  node.classList.add(dir);
+  return (
+    node
+  )
+}
+
+export default React.memo(Page);
